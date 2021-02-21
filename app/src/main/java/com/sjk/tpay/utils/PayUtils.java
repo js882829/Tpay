@@ -16,6 +16,7 @@ import com.sjk.tpay.po.AliBillList;
 import com.sjk.tpay.po.QrBean;
 import com.sjk.tpay.request.StringRequestGet;
 
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -45,45 +46,26 @@ public class PayUtils {
 
 
     /**
-     * @param context
-     * @param money   金额，单位为分，范围1-30000000
-     * @param mark    收款备注，最长30个字符，不能为空
+     * 格式化金钱，把元变为分的单位
+     *
+     * @param money
+     * @return
      */
-    public void creatWechatQr(Context context, Integer money, String mark) {
-        if (money == null || TextUtils.isEmpty(mark)) {
-            return;
-        }
-        if (mark.length() > 30 || money > 30000000 || money < 1) {
-            return;
-        }
-        Intent broadCastIntent = new Intent();
-        broadCastIntent.setAction(HookMain.WECHAT_CREAT_QR);
-        broadCastIntent.putExtra("mark", mark);
-        broadCastIntent.putExtra("money", String.valueOf(money / 100.0f));
-        context.sendBroadcast(broadCastIntent);
+    public static Integer formatMoneyToCent(String money) {
+        return Integer.valueOf(new DecimalFormat("#").format(Float.valueOf(money.trim()) * 100));
     }
-
 
     /**
-     * 这里为了统一，要求就设置为和微信一样了。
+     * 格式化金钱，把分变为元的单位
      *
-     * @param context
-     * @param money   金额，单位为分，范围1-30000000
-     * @param mark    收款备注，最长30个字符，不能为空
+     * @param money
+     * @return
      */
-    public void creatAlipayQr(Context context, Integer money, String mark) {
-        if (money == null || TextUtils.isEmpty(mark)) {
-            return;
+    public static String formatMoneyToYuan(String money) {
+        String yuan = new DecimalFormat("#.00").format(Float.valueOf(money.trim()) / 100f);
+        if (yuan.startsWith(".")) {
+            yuan = "0" + yuan;
         }
-        if (mark.length() > 30 || money > 30000000 || money < 1) {
-            return;
-        }
-        Intent broadCastIntent = new Intent();
-        broadCastIntent.setAction(HookMain.ALIPAY_CREAT_QR);
-        broadCastIntent.putExtra("mark", mark);
-        broadCastIntent.putExtra("money", String.valueOf(money / 100.0f));
-        context.sendBroadcast(broadCastIntent);
+        return yuan;
     }
-
-
 }

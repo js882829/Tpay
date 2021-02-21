@@ -2,11 +2,12 @@ package com.sjk.tpay;
 
 import android.Manifest;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -32,10 +33,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static com.sjk.tpay.HookMain.RECEIVE_BILL_ALIPAY;
-import static com.sjk.tpay.HookMain.RECEIVE_BILL_WECHAT;
-import static com.sjk.tpay.HookMain.RECEIVE_QR_ALIPAY;
-import static com.sjk.tpay.HookMain.RECEIVE_QR_WECHAT;
 import static com.sjk.tpay.ServiceMain.mIsRunning;
 
 /**
@@ -134,18 +131,20 @@ public class ActMain extends AppCompatActivity {
         //有的手机就算已经静态注册服务还是不行启动，我再手动启动一下吧。
         startService(new Intent(this, ServiceMain.class));
         startService(new Intent(this, ServiceProtect.class));
-
-        //广播也再次注册一下。。。机型兼容。。。
-        if (!ReceiverMain.mIsInit) {
-            IntentFilter filter = new IntentFilter(RECEIVE_QR_WECHAT);
-            filter.addAction(RECEIVE_QR_ALIPAY);
-            filter.addAction(RECEIVE_BILL_WECHAT);
-            filter.addAction(RECEIVE_BILL_ALIPAY);
-            registerReceiver(new ReceiverMain(), filter);
-        }
-        addStatusBar();
     }
 
+    private PackageInfo getPackageInfo(String packageName) {
+        PackageInfo pInfo = null;
+        try {
+            //通过PackageManager可以得到PackageInfo
+            PackageManager pManager = getPackageManager();
+            pInfo = pManager.getPackageInfo(packageName, PackageManager.GET_CONFIGURATIONS);
+            return pInfo;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return pInfo;
+    }
 
     /**
      * 测试微信获取二维码的功能
@@ -154,7 +153,8 @@ public class ActMain extends AppCompatActivity {
      */
     public void clsWechatPay(View view) {
         String time = System.currentTimeMillis() / 1000 + "";
-        PayUtils.getInstance().creatWechatQr(this, 12, "test" + time);
+        Toast.makeText(this, "只要能打开收款页面即表示成功，并不会输入和生成二维码", Toast.LENGTH_SHORT).show();
+        HookWechat.getInstance().creatQrTask(12, "test" + time);
     }
 
 
@@ -165,8 +165,8 @@ public class ActMain extends AppCompatActivity {
      */
     public void clsAlipayPay(View view) {
         String time = System.currentTimeMillis() / 1000 + "";
-        PayUtils.getInstance().creatAlipayQr(this, 12, "test" + time);
-        Toast.makeText(this,"此功能可以加群获取支付宝版哦",Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "此功能可以加群获取支付宝版哦", Toast.LENGTH_SHORT).show();
+        HookAlipay.getInstance().creatQrTask(12, "test" + time);
     }
 
     /**
@@ -199,27 +199,6 @@ public class ActMain extends AppCompatActivity {
             clsSubmit(null);
         }
     }
-
-    /**
-     * 在状态栏添加图标
-     */
-    private void addStatusBar() {
-        NotificationManager manager = (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
-        manager.cancelAll();
-
-        PendingIntent pi = PendingIntent.getActivity(this, 0, getIntent(), 0);
-        Notification noti = new Notification.Builder(this)
-                .setTicker("程序启动成功")
-                .setContentTitle("看到我，说明我在后台正常运行")
-                .setContentText("始于：" + new SimpleDateFormat("MM-dd HH:mm:ss").format(new Date()))
-                .setSmallIcon(R.mipmap.ic_launcher)//设置图标
-                .setDefaults(Notification.DEFAULT_SOUND)//设置声音
-                .setContentIntent(pi)//点击之后的页面
-                .build();
-
-        manager.notify(17952, noti);
-    }
-
 
     /**
      * 获取权限。。有些手机很坑，明明是READ_PHONE_STATE权限，却问用户是否允许拨打电话，汗。

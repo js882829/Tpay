@@ -1,8 +1,13 @@
 package com.sjk.tpay;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -13,7 +18,9 @@ import com.sjk.tpay.bll.ApiBll;
 import com.sjk.tpay.po.Configer;
 import com.sjk.tpay.utils.LogUtils;
 
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 
 
 /**
@@ -34,8 +41,6 @@ public class ServiceMain extends Service {
     //防止被休眠，你们根据情况可以开关，我是一直打开的，有点费电是必然的，哈哈
     private PowerManager.WakeLock mWakeLock;
 
-    private ApiBll mApiBll;
-
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -52,7 +57,7 @@ public class ServiceMain extends Service {
         mWakeLock.acquire();
 
         LogUtils.show("服务启动");
-        mApiBll = new ApiBll();
+        addStatusBar();
         if (!handler.hasMessages(0)) {
             handler.sendEmptyMessage(0);
         }
@@ -70,7 +75,7 @@ public class ServiceMain extends Service {
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
             if (mIsRunning) {//停止任务的时候，不会去轮循
-                mApiBll.checkQR();
+                ApiBll.getInstance().checkQR();
             }
             if (handler.hasMessages(0)) {
                 return;
@@ -97,5 +102,49 @@ public class ServiceMain extends Service {
         LogUtils.show("服务被杀死");
         Intent intent = new Intent(this.getApplicationContext(), ServiceMain.class);
         this.startService(intent);
+    }
+
+
+    /**
+     * 在状态栏添加图标
+     */
+    private void addStatusBar() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
+
+            NotificationChannel channel = new NotificationChannel("tpay_channel", "tpay_status",
+                    NotificationManager.IMPORTANCE_HIGH);
+            manager.createNotificationChannel(channel);
+
+            Intent intent = new Intent(this, ActMain.class);
+            PendingIntent pi = PendingIntent.getActivity(this, 0, intent, 0);
+            Notification noti = new Notification.Builder(this, "tpay_channel")
+                    .setTicker("程序启动成功")
+                    .setContentTitle("看到我，说明我在后台正常运行")
+                    .setContentText("始于：" + new SimpleDateFormat("MM-dd HH:mm:ss").format(new Date()))
+                    .setSmallIcon(R.mipmap.ic_launcher)//设置图标
+                    .setDefaults(Notification.DEFAULT_SOUND)//设置声音
+                    .setAutoCancel(false)
+                    .setOngoing(true)
+                    .setPriority(Notification.PRIORITY_MAX)
+                    .setContentIntent(pi)//点击之后的页面
+                    .build();
+            startForeground(17952, noti);
+        } else {
+            Intent intent = new Intent(this, ActMain.class);
+            PendingIntent pi = PendingIntent.getActivity(this, 0, intent, 0);
+            Notification noti = new Notification.Builder(this)
+                    .setTicker("程序启动成功")
+                    .setContentTitle("看到我，说明我在后台正常运行")
+                    .setContentText("始于：" + new SimpleDateFormat("MM-dd HH:mm:ss").format(new Date()))
+                    .setSmallIcon(R.mipmap.ic_launcher)//设置图标
+                    .setDefaults(Notification.DEFAULT_SOUND)//设置声音
+                    .setAutoCancel(false)
+                    .setOngoing(true)
+                    .setPriority(Notification.PRIORITY_MAX)
+                    .setContentIntent(pi)//点击之后的页面
+                    .build();
+            startForeground(17952, noti);
+        }
     }
 }
